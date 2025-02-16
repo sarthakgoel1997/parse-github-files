@@ -6,6 +6,8 @@ This repository is to scan, store and query json vulnerability scan files from h
 
 2. Download Docker: https://docs.docker.com/desktop/setup/install/mac-install/
 
+3. Go to `Makefile` and update `PERSONAL_ACCESS_TOKEN` with your GitHub personal access token to query repositories
+
 3. Go to the root of the repository and run: `make dev`
 
 ## Useful Docker Commands
@@ -23,7 +25,9 @@ This repository is to scan, store and query json vulnerability scan files from h
 
 7. `make clean`: Stops any running containers and deletes the built docker image
 
-## Userful SQLite Commands
+## Useful SQLite Commands
 1. `.tables`: Displays all tables present in the database
 
 2. `PRAGMA table_info (<table_name>)`: Displays all columns and types present in the table
+
+3. `.mode line`: To display select query results in a readable format

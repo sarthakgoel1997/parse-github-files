@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS File_Scanned (
 
 CREATE TABLE IF NOT EXISTS Scan_Result (
 	id VARCHAR(50) NOT NULL,
-	file_scanned_id INT(10) NOT NULL,
+	source_file VARCHAR(50) NOT NULL,
 	timestamp TIMESTAMP NOT NULL,
 	scan_status VARCHAR(30) NOT NULL,
 	resource_type VARCHAR(30) NOT NULL,
