@@ -5,6 +5,14 @@ type ScanRepoJSONFilesRequest struct {
 	Files      []string `json:"files"`
 }
 
+type QueryStoredDataRequest struct {
+	Filters Filters `json:"filters"`
+}
+
+type Filters struct {
+	Severity string `json:"severity"`
+}
+
 type FileData struct {
 	Name     string `json:"name"`
 	HtmlUrl  string `json:"html_url"`

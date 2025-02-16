@@ -24,3 +24,18 @@ func GetScanRepoJSONFilesRequest(w http.ResponseWriter, r *http.Request) (req mo
 
 	return
 }
+
+func QueryStoredDataRequest(w http.ResponseWriter, r *http.Request) (req model.QueryStoredDataRequest, err error) {
+	// parse the incoming JSON data from the request body
+	err = json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		return req, fmt.Errorf("invalid request body: %v", err)
+	}
+
+	// validate the request
+	if req.Filters.Severity == "" {
+		return req, fmt.Errorf("severity filter cannot be empty")
+	}
+
+	return
+}

@@ -34,9 +34,14 @@ func main() {
 
 	ctx := context.Background()
 
-	// POST API endpoint to scan GitHub repositories
+	// POST API endpoint to scan GitHub repositories and save data
 	router.HandleFunc("/scan", func(w http.ResponseWriter, r *http.Request) {
 		service.ScanRepoJSONFiles(ctx, w, r, db)
+	}).Methods("POST")
+
+	// POST API endpoint to query stored data
+	router.HandleFunc("/query", func(w http.ResponseWriter, r *http.Request) {
+		service.QueryStoredData(ctx, w, r, db)
 	}).Methods("POST")
 
 	c := cors.New(cors.Options{

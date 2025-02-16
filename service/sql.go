@@ -2,6 +2,7 @@ package service
 
 import (
 	"database/sql"
+	"encoding/json"
 	"parse-github-files/model"
 )
 
@@ -28,15 +29,43 @@ func saveScanResults(tx *sql.Tx, sourceFile string, scanResults []model.ScanResu
 	return
 }
 
+func getFilteredData(db *sql.DB, req model.QueryStoredDataRequest) (resp []model.Vulnerability, err error) {
+	resp = []model.Vulnerability{}
+	query := queryToGetFilteredVulnerability()
+	rows, err := db.Query(query, req.Filters.Severity)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	var v model.Vulnerability
+	var riskFactors string
+
+	for rows.Next() {
+		err = rows.Scan(&v.ID, &v.ScanID, &v.Severity, &v.Cvss, &v.Status, &v.PackageName, &v.CurrentVersion, &v.FixedVersion, &v.Description, &v.PublishedDate, &v.Link, &riskFactors)
+		if err != nil {
+			return
+		}
+		json.Unmarshal([]byte(riskFactors), &v.RiskFactors)
+		resp = append(resp, v)
+	}
+	return
+}
+
 func saveFileScannedData(tx *sql.Tx, sourceFile string, scanTime uint32) (err error) {
-	query := `
+	query := queryToAddFileScannedData()
+	_, err = tx.Exec(query, sourceFile, scanTime)
+	return
+}
+
+func queryToAddFileScannedData() string {
+	sqlQuery := `
 				INSERT INTO File_Scanned
 					(source_file, scan_time)
 				VALUES
 					(?, ?);
 				`
-	_, err = tx.Exec(query, sourceFile, scanTime)
-	return
+	return sqlQuery
 }
 
 func queryToAddScanResult() string {
@@ -56,5 +85,17 @@ func queryToAddVulnerability() string {
 				VALUES
 					(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 				`
+	return sqlQuery
+}
+
+func queryToGetFilteredVulnerability() string {
+	sqlQuery := `
+	SELECT
+		*
+	FROM
+		Vulnerability
+	WHERE
+		severity = ?;
+	`
 	return sqlQuery
 }
