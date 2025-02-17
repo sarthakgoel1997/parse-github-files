@@ -1,4 +1,4 @@
-# Introduction
+## Introduction
 This repository is to scan, store and query json vulnerability scan files from https://github.com/velancio/vulnerability_scans
 
 ## Setup
@@ -31,3 +31,27 @@ This repository is to scan, store and query json vulnerability scan files from h
 2. `PRAGMA table_info (<table_name>)`: Displays all columns and types present in the table
 
 3. `.mode line`: To display select query results in a readable format
+
+## API Endpoints
+### /scan
+Fetches all .json files from the specified GitHub path and stores data in SQLite database
+```
+curl --location 'http://localhost:9000/scan' \
+--header 'Content-Type: application/json' \
+--data '{
+    "repo": "https://github.com/velancio/vulnerability_scans",
+    "files": ["vulnscan1011.json", "vulnscan1213.json", "vulnscan15.json", "vulnscan16.json", "vulnscan18.json", "vulnscan19.json"]
+}'
+```
+
+### /query
+Returns all payloads matching any one filter key (exact matches)
+```
+curl --location 'http://localhost:9000/query' \
+--header 'Content-Type: application/json' \
+--data '{
+    "filters": {
+        "severity": "HIGH"
+    }
+}'
+```
