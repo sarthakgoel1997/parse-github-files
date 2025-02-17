@@ -7,7 +7,7 @@ type ScanResultsWrapper struct {
 }
 
 type ScanResult struct {
-	ID              string          `json:"scan_id"`
+	ScanID          string          `json:"scan_id"`
 	SourceFile      string          `json:"source_file"`
 	Timestamp       time.Time       `json:"timestamp"`
 	ScanStatus      string          `json:"scan_status"`

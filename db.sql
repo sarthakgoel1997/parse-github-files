@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS File_Scanned (
 );
 
 CREATE TABLE IF NOT EXISTS Scan_Result (
-	id VARCHAR(50) NOT NULL,
+	scan_id VARCHAR(50) NOT NULL,
 	source_file VARCHAR(50) NOT NULL,
 	timestamp TIMESTAMP NOT NULL,
 	scan_status VARCHAR(30) NOT NULL,
@@ -22,12 +22,13 @@ CREATE TABLE IF NOT EXISTS Scan_Result (
 	policies_version VARCHAR(30) NOT NULL,
 	scanning_rules TEXT NOT NULL,
 	excluded_paths TEXT NOT NULL,
-	PRIMARY KEY (id)
+	PRIMARY KEY (scan_id, source_file)
 );
 
 CREATE TABLE IF NOT EXISTS Vulnerability (
 	id VARCHAR(50) NOT NULL,
 	scan_id VARCHAR(50) NOT NULL,
+	source_file VARCHAR(50) NOT NULL,
 	severity VARCHAR(20) NOT NULL,
 	cvss DOUBLE NOT NULL,
 	status VARCHAR(20) NOT NULL,
@@ -38,5 +39,5 @@ CREATE TABLE IF NOT EXISTS Vulnerability (
 	published_date TIMESTAMP NOT NULL,
 	link VARCHAR(200) NOT NULL,
 	risk_factors TEXT NOT NULL,
-	PRIMARY KEY (id)
+	PRIMARY KEY (id, scan_id, source_file)
 );

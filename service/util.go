@@ -1,6 +1,7 @@
 package service
 
 import (
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -10,7 +11,60 @@ import (
 	"os"
 	"parse-github-files/model"
 	"strings"
+	"time"
 )
+
+func getFileDataAndScanResults(repo, file string) (fileData model.FileData, scanResults []model.ScanResult, err error) {
+	githubReq, baseUrl, err := prepareGitHubAPIRequest(repo)
+	if err != nil {
+		err = fmt.Errorf("failed to prepare GitHub API request: %w", err)
+		return
+	}
+
+	fileData, err = makeGitHubAPICall(baseUrl, file, githubReq)
+	if err != nil {
+		err = fmt.Errorf("failed to fetch file data from GitHub API: %w", err)
+		return
+	}
+
+	scanResults, err = decodeAndParseBase64Data(fileData.Content)
+	if err != nil {
+		err = fmt.Errorf("failed to decode and parse: %w", err)
+	}
+
+	return
+}
+
+func storeGitHubDataToDB(db *sql.DB, fileData model.FileData, scanResults []model.ScanResult, startTime time.Time) (err error) {
+	// start a new transaction
+	tx, err := db.Begin()
+	if err != nil {
+		err = fmt.Errorf("failed to start DB transaction: %w", err)
+		return
+	}
+	defer tx.Rollback() // ensure rollback if anything fails
+
+	// save scan results
+	err = saveScanResults(tx, fileData.HtmlUrl, scanResults)
+	if err != nil {
+		err = fmt.Errorf("error saving scan results: %w", err)
+		return
+	}
+
+	// save file scan metadata
+	timeElapsed := time.Since(startTime)
+	err = saveFileScannedData(tx, fileData.HtmlUrl, uint32(timeElapsed.Milliseconds()))
+	if err != nil {
+		err = fmt.Errorf("error saving file scan metadata: %w", err)
+		return
+	}
+
+	// Commit transaction
+	if err = tx.Commit(); err != nil {
+		err = fmt.Errorf("failed to commit transaction: %w", err)
+	}
+	return
+}
 
 func extractOwnerRepo(url string) (string, string, error) {
 	// remove the base URL prefix
@@ -51,7 +105,7 @@ func addhttpAuthRequestHeaders(req *http.Request) {
 	req.Header.Add("X-GitHub-Api-Version", "2022-11-28")
 }
 
-func getGitHubFileData(baseUrl string, file string, githubReq *http.Request) (fileData model.FileData, err error) {
+func makeGitHubAPICall(baseUrl string, file string, githubReq *http.Request) (fileData model.FileData, err error) {
 	client := &http.Client{}
 	newUrl := baseUrl + file
 

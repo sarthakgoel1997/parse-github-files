@@ -21,6 +21,7 @@ type FileData struct {
 }
 
 type FileScanned struct {
-	SourceFile string
-	ScanTime   uint32
+	SourceFile  string
+	ScanResults []ScanResult
+	ScanTime    uint32
 }

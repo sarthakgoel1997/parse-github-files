@@ -4,8 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
-	"parse-github-files/model"
+	"strings"
+	"sync"
 	"time"
 )
 
@@ -18,58 +20,47 @@ func ScanRepoJSONFiles(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	githubReq, baseUrl, err := prepareGitHubAPIRequest(req.Repository)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	var wg sync.WaitGroup
+	errChan := make(chan error, len(req.Files)) // buffered error channel
+	semaphore := make(chan struct{}, 3)         // limit concurrency to 3 files
+
+	for _, f := range req.Files {
+		wg.Add(1)
+
+		go func(file string) {
+			defer wg.Done()
+			semaphore <- struct{}{}
+			defer func() { <-semaphore }()
+			startTime := time.Now()
+
+			fileData, scanResults, err := getFileDataAndScanResults(req.Repository, file)
+			if err != nil {
+				errChan <- fmt.Errorf("file %s: error while getting file data and scan results: %w", file, err)
+				return
+			}
+
+			err = storeGitHubDataToDB(db, fileData, scanResults, startTime)
+			if err != nil {
+				errChan <- fmt.Errorf("file %s: error while storing GitHub data to DB: %w", file, err)
+				return
+			}
+		}(f)
+	}
+
+	wg.Wait()      // wait for all goroutines to complete
+	close(errChan) // close error channel after processing is done
+
+	var errorMessages []string // handle errors
+	for err := range errChan {
+		if err != nil {
+			errorMessages = append(errorMessages, err.Error())
+		}
+	}
+	if len(errorMessages) > 0 {
+		http.Error(w, strings.Join(errorMessages, "\n"), http.StatusInternalServerError)
 		return
 	}
 
-	rollback := true
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		http.Error(w, "error beginning db transaction: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer func() {
-		if rollback {
-			tx.Rollback()
-			return
-		}
-		tx.Commit()
-	}()
-
-	var fileData model.FileData
-
-	for _, file := range req.Files {
-		startTime := time.Now()
-
-		fileData, err = getGitHubFileData(baseUrl, file, githubReq)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		scanResults, err := decodeAndParseBase64Data(fileData.Content)
-		if err != nil {
-			http.Error(w, "Failed to decode and parse: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		err = saveScanResults(tx, fileData.HtmlUrl, scanResults)
-		if err != nil {
-			http.Error(w, "Error saving scan results data to db: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		timeElapsed := time.Since(startTime)
-		err = saveFileScannedData(tx, fileData.HtmlUrl, uint32(timeElapsed.Milliseconds()))
-		if err != nil {
-			http.Error(w, "Error saving file scanned data to db: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-	}
-
-	rollback = false
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("All JSON files scanned successfully"))
 }
