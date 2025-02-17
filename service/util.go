@@ -11,8 +11,48 @@ import (
 	"os"
 	"parse-github-files/model"
 	"strings"
+	"sync"
 	"time"
 )
+
+func processFilesAndSaveData(db *sql.DB, repository string, files []string) (errorMessages []string) {
+	var wg sync.WaitGroup
+	errChan := make(chan error, len(files)) // buffered error channel
+	semaphore := make(chan struct{}, 3)     // limit concurrency to 3 files
+
+	for _, f := range files {
+		wg.Add(1)
+
+		go func(file string) {
+			defer wg.Done()
+			semaphore <- struct{}{}
+			defer func() { <-semaphore }()
+			startTime := time.Now()
+
+			fileData, scanResults, err := getFileDataAndScanResults(repository, file)
+			if err != nil {
+				errChan <- fmt.Errorf("file %s: error while getting file data and scan results: %w", file, err)
+				return
+			}
+
+			err = storeGitHubDataToDB(db, fileData, scanResults, startTime)
+			if err != nil {
+				errChan <- fmt.Errorf("file %s: error while storing GitHub data to DB: %w", file, err)
+				return
+			}
+		}(f)
+	}
+
+	wg.Wait()      // wait for all goroutines to complete
+	close(errChan) // close error channel after processing is done
+
+	for err := range errChan {
+		if err != nil {
+			errorMessages = append(errorMessages, err.Error())
+		}
+	}
+	return
+}
 
 func getFileDataAndScanResults(repo, file string) (fileData model.FileData, scanResults []model.ScanResult, err error) {
 	githubReq, baseUrl, err := prepareGitHubAPIRequest(repo)
