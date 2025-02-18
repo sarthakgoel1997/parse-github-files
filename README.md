@@ -23,7 +23,11 @@ This repository is to scan, store and query json vulnerability scan files from h
 
 6. `make query-db`: Opens sqlite database in the terminal
 
-7. `make clean`: Stops any running containers and deletes the built docker image
+7. `make test`: Run all unit tests and generate coverage report
+
+8. `make coverage`: View file-based coverage report
+
+9. `make clean`: Stops any running containers and deletes the built docker image
 
 ## Useful SQLite Commands
 1. `.tables`: Displays all tables present in the database
