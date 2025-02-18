@@ -27,3 +27,13 @@ clean: stop
 
 query-db:
 	docker exec -it $(CONTAINER_NAME) sh -c "cd /app && sqlite3 database.db"
+
+test:
+	@echo "Running unit tests with coverage..."
+	PERSONAL_ACCESS_TOKEN=$(PERSONAL_ACCESS_TOKEN) go test ./... -coverprofile=coverage.out -v
+	go tool cover -func=coverage.out
+
+coverage:
+	@echo "Generating coverage report..."
+	go tool cover -html=coverage.out -o coverage.html
+	open coverage.html
